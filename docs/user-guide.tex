@@ -1,0 +1,384 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+
+% ── Colors ────────────────────────────────────────────────
+\definecolor{radioBlue}{HTML}{1a5276}
+\definecolor{radioCyan}{HTML}{17a2b8}
+\definecolor{radioGreen}{HTML}{28a745}
+\definecolor{radioYellow}{HTML}{e6a817}
+\definecolor{radioRed}{HTML}{dc3545}
+\definecolor{radioDark}{HTML}{212529}
+\definecolor{radioLight}{HTML}{f8f9fa}
+\definecolor{radioGray}{HTML}{6c757d}
+
+% ── Hyperlinks ────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=radioBlue,
+    urlcolor=radioCyan,
+    pdftitle={RadioSim User Guide},
+    pdfauthor={RadioSim},
+    pdfsubject={Radio Stations Simulation Tool}
+}
+
+% ── Headers & Footers ─────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textcolor{radioGray}{\small RadioSim}}
+\fancyhead[R]{\textcolor{radioGray}{\small User Guide v1.0}}
+\fancyfoot[C]{\textcolor{radioGray}{\small --- \thepage{} ---}}
+\setlength{\headheight}{14.5pt}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% ── Custom boxes ──────────────────────────────────────────
+\newtcolorbox{tipbox}{
+    colback=radioLight!50, colframe=radioGreen,
+    left=2mm, right=2mm, top=2mm, bottom=2mm,
+    before upper={\textbf{\textcolor{radioGreen}{[i]}}\enspace}
+}
+
+\newtcolorbox{warnbox}{
+    colback=radioYellow!15, colframe=radioYellow,
+    left=2mm, right=2mm, top=2mm, bottom=2mm,
+    before upper={\textbf{\textcolor{radioYellow}{[!]}}\enspace}
+}
+
+% ── Commands ──────────────────────────────────────────────
+\newcommand{\cmd}[1]{\textcolor{radioDark}{\texttt{#1}}}
+\newcommand{\key}[1]{\textcolor{radioBlue}{\framebox{\texttt{#1}}}}
+\newcommand{\signalbar}[1]{%
+    {\color{radioGreen}\rule{#1mm}{3mm}}%
+}
+
+% ── Title ─────────────────────────────────────────────────
+\title{\vspace{-1cm}\Huge\textcolor{radioBlue}{\textbf{RadioSim}}\\[2mm]
+    \Large Radio Stations Simulation Tool\\[2mm]
+    \normalsize\textcolor{radioGray}{User Guide {\tiny —} v1.0}}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+\begin{center}
+\begin{tcolorbox}[colback=radioBlue!8, colframe=radioBlue, width=0.92\textwidth,
+    left=4mm, right=4mm, top=3mm, bottom=3mm]
+    \textbf{What is RadioSim?}\quad
+    RadioSim lets you \textbf{listen to your music as if it were broadcast over the radio}.
+    Feed it your MP3 files or YouTube links, pick a radio mode (FM, AM, DAB+\dots),
+    and hear what it would sound like over the air --- complete with static,
+    signal fading, and all the quirks of real radio reception.
+\end{tcolorbox}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════
+\section{Quick Start}
+% ═══════════════════════════════════════════════════════════
+
+You need \textbf{Python 3.10+} and \textbf{ffmpeg}. That's it.
+
+\begin{enumerate}[leftmargin=*]
+    \item Open a terminal in the \texttt{radio-sim/} folder.
+    \item Activate the environment:
+    \begin{center}
+        \cmd{source venv/bin/activate}
+    \end{center}
+    \item Play your music folder as an FM station:
+    \begin{center}
+        \cmd{python -m src.main --mode fm --freq 101.1 --source \textasciitilde/Music/}
+    \end{center}
+\end{enumerate}
+
+\begin{tipbox}
+    \textbf{First time?} Run \cmd{pip install -r requirements.txt} once to install dependencies.
+\end{tipbox}
+
+\vspace{3mm}
+\textbf{Three things to try right now:}
+
+\begin{tcolorbox}[colback=radioGreen!8, colframe=radioGreen, left=4mm, right=4mm]
+\begin{enumerate}[nosep]
+    \item \cmd{python -m src.main --mode fm  --freq 101.1 --source \textasciitilde/Music/}
+    \item \cmd{python -m src.main --mode am  --freq 880  --source \textasciitilde/Music/ --rssi -80}
+    \item \cmd{python -m src.main --mode dab --freq 202.0 --source \textasciitilde/Music/}
+\end{enumerate}
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════
+\section{The Five Radio Modes}
+% ═══════════════════════════════════════════════════════════
+
+RadioSim simulates five broadcast technologies. Each one sounds different.
+Here's what to expect.
+
+% ── FM ──
+\subsection*{\textcolor{radioBlue}{\textbf{FM} --- Frequency Modulation}}
+
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.5cm} X@{}}
+    \textbf{Frequency band}  & 87.5 -- 108.0\,MHz \\
+    \textbf{Audio quality}   & 50\,Hz -- 15\,kHz, stereo \\
+    \textbf{Sound character} & Clean with slight background hiss. \\
+                             & At weak signal: echoes (multipath), stereo blends to mono. \\
+    \textbf{Tuning step}     & 0.1\,MHz \\
+\end{tabularx}
+
+\vspace{2mm}
+\begin{tabular}{ccl}
+    \toprule
+    \textbf{Signal} & \textbf{RSSI} & \textbf{What you hear} \\
+    \midrule
+    \signalbar{13} Excellent  & $-30$ dBm & Studio quality, near-perfect \\
+    \signalbar{10} Very good  & $-45$ dBm & Clean, barely audible hiss \\
+    \signalbar{7}  Fair       & $-60$ dBm & Noticeable hiss, slight fading \\
+    \signalbar{4}  Weak       & $-75$ dBm & Heavy hiss, forced mono \\
+    \signalbar{1}  Threshold  & $-90$ dBm & Noise dominates the signal \\
+    \bottomrule
+\end{tabular}
+
+% ── AM ──
+\subsection*{\textcolor{radioRed}{\textbf{AM} --- Amplitude Modulation}}
+
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.5cm} X@{}}
+    \textbf{Frequency band}  & 530 -- 1710\,kHz \\
+    \textbf{Audio quality}   & 50\,Hz -- 5\,kHz, mono only \\
+    \textbf{Sound character} & ``Frying'' static, slow fading, crackle from lightning. \\
+                             & Narrow bandwidth --- sounds like a telephone line. \\
+    \textbf{Tuning step}     & 1\,kHz \\
+\end{tabularx}
+\vspace{1mm}
+
+\begin{warnbox}
+    AM radio is \textbf{always mono} and \textbf{always noisy}.
+    Try it at \cmd{--rssi -80} for the full ``distant station at midnight'' experience.
+\end{warnbox}
+
+% ── AMHD ──
+\subsection*{\textcolor{radioYellow}{\textbf{AMHD} --- AM HD Radio}}
+Hybrid digital AM. Same dial as AM (530--1710\,kHz), but a digital sidechannel
+adds stereo and extended bandwidth (15\,kHz) at strong signal. Falls back to
+analog AM quality when the signal weakens. The best of both worlds --- when
+you're close enough to the tower.
+
+% ── FMHD ──
+\subsection*{\textcolor{radioGreen}{\textbf{FMHD} --- FM HD Radio}}
+Hybrid digital FM. Full CD bandwidth (20\,Hz -- 20\,kHz), discrete stereo.
+Supports multicasting: up to 3 sub-channels on one frequency. Near-transparent
+at strong signal. Almost indistinguishable from the original file.
+
+% ── DAB+ ──
+\subsection*{\textcolor{radioCyan}{\textbf{DAB+} --- Digital Audio Broadcasting}}
+
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.5cm} X@{}}
+    \textbf{Frequency band}  & 174 -- 240\,MHz \\
+    \textbf{Audio quality}   & 20\,Hz -- 20\,kHz, stereo, HE-AAC \\
+    \textbf{Sound character} & Pristine digital audio --- \textbf{or total silence}. \\
+                             & No static. No hiss. No gradual fade. \\
+                             & The ``cliff effect'': perfect above threshold, mute below. \\
+\end{tabularx}
+
+\vspace{2mm}
+\begin{center}
+\textit{``DAB doesn't get noisy. It just stops.''}
+\end{center}
+
+\vspace{2mm}
+
+\begin{center}
+\begin{tcolorbox}[colback=radioLight, colframe=radioGray, width=0.85\textwidth]
+\textbf{Quick Comparison Table}\\[2mm]
+\begin{tabular}{@{}lcccc@{}}
+    \toprule
+    \textbf{Feature} & \textbf{FM} & \textbf{AM} & \textbf{AMHD} & \textbf{FMHD} \\
+    \midrule
+    Bandwidth (max) & 15\,kHz & 5\,kHz & 15\,kHz & 20\,kHz \\
+    Stereo          & Yes & No & Yes (digital) & Yes \\
+    Noise type      & Hiss & Static & Digital artifacts & Near-none \\
+    Gradual fade?   & Yes & Yes & Crossfade & Crossfade \\
+    \bottomrule
+\end{tabular}
+
+\vspace{1mm}
+\textbf{DAB+}: 20\,kHz, stereo, digital --- but mutes completely below threshold.
+\end{tcolorbox}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════
+\section{Terminal UI --- Interactive Mode}
+% ═══════════════════════════════════════════════════════════
+
+Launch without \cmd{--no-tui} to get the interactive radio faceplate:
+
+\begin{center}
+\cmd{python -m src.main --mode fm --freq 101.1 --source \textasciitilde/Music/}
+\end{center}
+
+\subsection*{Keyboard Controls}
+
+\begin{center}
+\begin{tabular}{@{}ll@{\hspace{15mm}}ll@{}}
+    \toprule
+    \textbf{Key} & \textbf{Action} & \textbf{Key} & \textbf{Action} \\
+    \midrule
+    \key{Q} / Esc    & Quit             & \key{M} / Tab & Cycle mode \\
+    \key{$\leftarrow$} \key{$\rightarrow$} & Tune frequency   & \key{$\uparrow$} \key{$\downarrow$} & Volume \\
+    \key{+} \key{-}  & Volume (alt)     & \key{[} \key{]} & RSSI weaker/stronger \\
+    \key{R}          & Randomize RSSI   & \key{N} & Next track \\
+    \key{Space}      & Play / Pause     & \key{S} & Toggle source \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}
+    \textbf{Try this:} Launch FM at strong signal, then press \key{[} repeatedly.
+    You'll hear the signal degrade in real time --- like driving away from a city.
+\end{tipbox}
+
+% ═══════════════════════════════════════════════════════════
+\section{Command-Line Reference}
+% ═══════════════════════════════════════════════════════════
+
+\begin{tabularx}{\textwidth}{@{}>{\ttfamily\footnotesize}l X@{}}
+    \toprule
+    \normalfont\textbf{Option} & \textbf{What it does} \\
+    \midrule
+    -m, --mode    & Radio mode: \texttt{fm}, \texttt{am}, \texttt{amhd}, \texttt{fmhd}, \texttt{dab} \\
+    -f, --freq    & Frequency to tune (auto-selects center of band if omitted) \\
+    -s, --source  & Path to MP3 folder/file, or YouTube URL \\
+    -r, --rssi    & Signal strength in dBm ($-120$ to $0$, default $-45$) \\
+    -v, --volume  & Output volume $0.0$ -- $1.0$ (default $0.8$) \\
+    -w, --wav     & Export processed audio to a \texttt{.wav} file \\
+    -d, --duration& Duration in seconds for WAV export (default $10$) \\
+    --no-tui      & Headless mode --- no interactive display \\
+    --help        & Show full help \\
+    \bottomrule
+\end{tabularx}
+
+\subsection*{WAV Export}
+
+Capture processed audio to compare modes or share with others:
+
+{\footnotesize
+\begin{tcolorbox}[colback=radioLight, colframe=radioGray, left=2mm, right=2mm]
+\texttt{\# Export 30 seconds of AM radio with heavy static}\\
+\texttt{python -m src.main --mode am --freq 880 --rssi -85 \textbackslash}\\
+\texttt{\hspace{4mm} --source \textasciitilde/Music/song.mp3 \textbackslash}\\
+\texttt{\hspace{4mm} --wav /tmp/am\_weak.wav --duration 30 --no-tui}
+\end{tcolorbox}
+}
+
+% ═══════════════════════════════════════════════════════════
+\section{Audio Sources}
+% ═══════════════════════════════════════════════════════════
+
+\subsection*{Local Files}
+\begin{itemize}[nosep]
+    \item Point \cmd{--source} at a folder or a single file.
+    \item Folders are scanned \textbf{recursively} by default.
+    \item Files are \textbf{shuffled} --- each session is a different playlist.
+    \item Supported formats: MP3, WAV, FLAC, OGG, M4A, AAC, Opus.
+\end{itemize}
+
+\subsection*{YouTube}
+\begin{itemize}[nosep]
+    \item Paste any YouTube URL as \cmd{--source}.
+    \item Audio streams in real time --- no waiting for download.
+    \item Requires \texttt{ffmpeg} on your system.
+\end{itemize}
+
+\begin{center}
+\cmd{python -m src.main --mode am --freq 880 --source "https://www.youtube.com/watch?v=..."}
+\end{center}
+
+% ═══════════════════════════════════════════════════════════
+\section{Recipes}
+% ═══════════════════════════════════════════════════════════
+
+\begin{tcolorbox}[colback=radioBlue!8, colframe=radioBlue,
+    title={\textbf{Compare All 5 Modes (same song)}}]
+{\footnotesize
+\texttt{for mode in fm am amhd fmhd dab; do}\\
+\texttt{\hspace{4mm}python -m src.main --mode \$mode --wav /tmp/cmp\_\$\{mode\}.wav}\\
+\texttt{\hspace{8mm} --source song.mp3 --no-tui}\\
+\texttt{done}
+}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=radioGreen!8, colframe=radioGreen,
+    title={\textbf{Driving Away from a Station}}]
+{\footnotesize
+\texttt{python -m src.main --mode fm --freq 101.1 \textbackslash}\\
+\texttt{\hspace{4mm} --source \textasciitilde/Music/ --rssi -30}\\[1mm]
+Then press \key{[} repeatedly --- hear the signal get weaker.
+}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=radioYellow!8, colframe=radioYellow,
+    title={\textbf{Distant AM Station at Night}}]
+{\footnotesize
+\texttt{python -m src.main --mode am --freq 880 --rssi -85 \textbackslash}\\
+\texttt{\hspace{4mm} --source \textasciitilde/Music/}\\[1mm]
+Heavy static, deep fading, occasional crackle. Pure ionosphere.
+}
+\end{tcolorbox}
+
+\begin{tcolorbox}[colback=radioCyan!8, colframe=radioCyan,
+    title={\textbf{DAB+ Cliff Effect Demo}}]
+{\footnotesize
+\texttt{python -m src.main --mode dab --freq 202.0 --rssi -85 \textbackslash}\\
+\texttt{\hspace{4mm} --source \textasciitilde/Music/}\\[1mm]
+Right on the digital cliff --- alternates between perfect and silence.
+}
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════
+\section{Troubleshooting}
+% ═══════════════════════════════════════════════════════════
+
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4cm} X@{}}
+    \toprule
+    \textbf{Problem} & \textbf{Solution} \\
+    \midrule
+    No sound &
+    Run \texttt{aplay -l} to check audio hardware is detected. \\
+    & Run \texttt{alsamixer} --- your output might be muted. \\
+    \addlinespace
+    \texttt{ffmpeg not found} &
+    Install: \texttt{sudo apt install ffmpeg} (Debian) or \texttt{brew install ffmpeg} (macOS). \\
+    \addlinespace
+    Audio stutters / glitches &
+    Edit \texttt{src/engine/pipeline.py}: increase \texttt{buffer\_chunks} from 32 to 64. \\
+    \addlinespace
+    Import errors &
+    Always run from the \texttt{radio-sim/} directory with \texttt{source venv/bin/activate}. \\
+    \addlinespace
+    YouTube not working &
+    Update yt-dlp: \texttt{pip install --upgrade yt-dlp} \\
+    \addlinespace
+    \texttt{venv/bin/activate} not found &
+    Create it first: \texttt{python3 -m venv venv \&\& pip install -r requirements.txt} \\
+    \bottomrule
+\end{tabularx}
+
+\vspace{5mm}
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[2mm]
+{\small\textcolor{radioGray}{RadioSim {\tiny —} github.com/enigma {\tiny —} July 2026}}\\[1mm]
+{\small\textcolor{radioGray}{Python {\tiny ·} SciPy {\tiny ·} Rich TUI {\tiny ·} ffmpeg {\tiny ·} yt-dlp}}
+\end{center}
+
+\end{document}
