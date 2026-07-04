@@ -3,26 +3,27 @@
 ## Prerequisites
 
 - **Python 3.10+**
-- **ffmpeg** (required for YouTube sources and some audio formats)
-- **PortAudio** library (required by PyAudio)
+- **ffmpeg** (audio decode + playback)
+
+That's it. No PortAudio, no pyaudio, no system audio libraries.
 
 ### Install system dependencies
 
 ```bash
 # Debian/Ubuntu
-sudo apt install python3 python3-venv python3-dev portaudio19-dev ffmpeg
+sudo apt install python3 python3-venv ffmpeg
 
 # macOS
-brew install python portaudio ffmpeg
+brew install python ffmpeg
 
 # Arch
-sudo pacman -S python python-pip portaudio ffmpeg
+sudo pacman -S python python-pip ffmpeg
 ```
 
 ## Setup
 
 ```bash
-# Clone or enter the project directory
+# Enter the project directory
 cd radio-sim
 
 # Create and activate virtual environment
@@ -33,18 +34,21 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+On first launch, RadioSim checks that `ffmpeg` and `ffplay` are on PATH.
+If missing, it prints a clear error and exits.
+
 ## Quick Start
 
-### Local MP3 files as an FM station
+### Local audio files as an FM station
 
 ```bash
 python -m src.main --mode fm --freq 101.1 --source ~/Music/
 ```
 
-### YouTube audio as an AM station
+### YouTube audio as an AM station with weak signal
 
 ```bash
-python -m src.main --mode am --freq 880 --source "https://www.youtube.com/watch?v=jfKfPfyJRdk"
+python -m src.main --mode am --freq 880 --rssi -80 --source "https://www.youtube.com/watch?v=jfKfPfyJRdk"
 ```
 
 ### DAB+ digital radio
@@ -53,10 +57,17 @@ python -m src.main --mode am --freq 880 --source "https://www.youtube.com/watch?
 python -m src.main --mode dab --freq 202.0 --source ~/podcasts/
 ```
 
-### Headless mode (no TUI)
+### Headless mode (no TUI, shows now-playing on stderr)
 
 ```bash
 python -m src.main --mode fm --freq 95.5 --source ~/Music/ --no-tui
+```
+
+### Export processed audio to WAV
+
+```bash
+python -m src.main --mode am --freq 880 --rssi -85 --source ~/Music/song.mp3 \
+    --wav /tmp/am_weak.wav --duration 30 --no-tui
 ```
 
 ## Keyboard Controls (TUI Mode)
@@ -66,13 +77,13 @@ python -m src.main --mode fm --freq 95.5 --source ~/Music/ --no-tui
 | `Q` / `Esc` | Quit |
 | `M` / `Tab` | Cycle mode: FM → AM → AMHD → FMHD → DAB+ |
 | `←` `→` | Tune frequency down/up |
-| `↑` `↓` | Volume up/down |
+| `↑` `↓` | Volume up/down (flash feedback on change) |
 | `+` `-` | Volume up/down (alternate) |
-| `[` `]` | RSSI down/up (weaker/stronger signal) |
+| `[` `]` | RSSI down/up — weaker/stronger signal (flash feedback on change) |
 | `R` | Randomize RSSI |
 | `N` | Next track (MP3 source) |
-| `Space` | Toggle play/pause |
-| `S` | Toggle source type display |
+
+Frequency auto-clamps to the center of the new band when switching modes.
 
 ## CLI Options
 
@@ -82,10 +93,12 @@ Usage: python -m src.main [OPTIONS]
 Options:
   -m, --mode [fm|am|amhd|fmhd|dab]  Radio mode (default: fm)
   -f, --freq FLOAT                   Frequency (auto-selects center if omitted)
-  -s, --source TEXT                  MP3 directory path or YouTube URL
-  -r, --rssi FLOAT                   Initial RSSI in dBm (default: -45)
+  -s, --source TEXT                  MP3 directory/file or YouTube URL
+  -r, --rssi FLOAT                   Initial RSSI in dBm, -120 to -10 (default: -45)
   -v, --volume FLOAT                 Volume 0.0–1.0 (default: 0.8)
-  --tui / --no-tui                   Launch interactive TUI (default: yes)
+  -w, --wav PATH                     Export processed audio to WAV file instead of playing
+  -d, --duration FLOAT               Duration in seconds for --wav export (default: 10)
+  --tui / --no-tui                   Launch interactive TUI (default: --tui)
   --help                             Show help
   --version                          Show version
 ```
@@ -102,25 +115,32 @@ Options:
 
 ## Troubleshooting
 
-### "No audio devices found" / PyAudio errors
+### No sound
+
+RadioSim uses `ffplay` with ALSA for audio output:
 
 ```bash
-# Check available devices
-python -c "import pyaudio; p = pyaudio.PyAudio(); print(p.get_device_count())"
+# Check audio devices
+aplay -l
 
-# On Linux, ensure user is in the audio group
-sudo usermod -a -G audio $USER
-# Log out and back in
+# Test direct playback
+aplay /tmp/radiosim_fm.wav
+
+# Check if muted
+alsamixer
 ```
 
-### "ffmpeg not found" (YouTube sources)
+### "Error: ffmpeg not found on PATH"
 
 ```bash
-which ffmpeg  # should return a path
-# If not: sudo apt install ffmpeg (or equivalent)
+# Debian/Ubuntu
+sudo apt install ffmpeg
+
+# macOS
+brew install ffmpeg
 ```
 
-### "yt-dlp: command not found"
+### "yt-dlp: command not found" (YouTube sources)
 
 ```bash
 pip install --upgrade yt-dlp
@@ -129,18 +149,19 @@ pip install --upgrade yt-dlp
 ### "No supported audio files found"
 
 Ensure the source directory contains files with supported extensions:
-`.mp3`, `.wav`, `.flac`, `.ogg`, `.m4a`, `.aac`
+`.mp3`, `.wav`, `.flac`, `.ogg`, `.m4a`, `.aac`, `.opus`
 
-### Audio stuttering / underruns
+### Audio stuttering / dropouts
 
 - Reduce system load (close other CPU-intensive apps)
-- Increase buffer size: edit `src/engine/pipeline.py` → `buffer_chunks=64`
-- Reduce chunk_size: 512 instead of 1024
+- The refill thread loops as fast as possible; stutters indicate CPU-bound DSP
+- Try a simpler mode (FM is lighter than AMHD/FMHD)
 
 ### Import errors about `src.*`
 
 Run from the `radio-sim/` directory (the parent of `src/`):
 ```bash
 cd radio-sim
+source venv/bin/activate
 python -m src.main ...
 ```

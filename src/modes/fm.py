@@ -49,7 +49,7 @@ class FMMode(RadioMode):
             return audio
 
         # Blend factor: 0 = full stereo (strong), 1 = full mono (weak)
-        blend = float(np.clip((signal_db + 90) / (-70 + 90), 0.0, 1.0))
+        blend = float(np.clip((-70 - signal_db) / 20.0, 0.0, 1.0))
         if blend <= 0.0:
             return audio
 

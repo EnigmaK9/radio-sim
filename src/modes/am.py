@@ -78,7 +78,7 @@ class AMMode(RadioMode):
         Rate increases as signal weakens: ~0.5/sec at -60 dBm → ~5/sec at -90 dBm.
         """
         n = len(audio)
-        rate_per_sample = 0.001 + (1.0 - self._noise_level_from_rssi(signal_db) / 0.15) * 0.005
+        rate_per_sample = 0.001 + (self._noise_level_from_rssi(signal_db) / 0.15) * 0.005
         impulses = np.random.random(n) < rate_per_sample
         n_impulses = int(np.sum(impulses))
 
@@ -105,8 +105,8 @@ class AMMode(RadioMode):
         """
         n = len(audio)
         # Generate slow random envelope
-        fade_rate = 0.2 + (1.0 - self._noise_level_from_rssi(signal_db) / 0.15) * 1.8
-        depth = 0.1 + (1.0 - self._noise_level_from_rssi(signal_db) / 0.15) * 0.5
+        fade_rate = 0.2 + (self._noise_level_from_rssi(signal_db) / 0.15) * 1.8
+        depth = 0.1 + (self._noise_level_from_rssi(signal_db) / 0.15) * 0.5
 
         # Low-frequency noise for envelope
         raw = np.random.randn(n).astype(np.float32)
@@ -128,6 +128,5 @@ class AMMode(RadioMode):
                 k = np.random.randint(5)
                 self._pink_state[k] = np.random.randn()
                 out[i, ch] = np.mean(self._pink_state)
-        # Normalize
-        out = out / (np.std(out) + 1e-8)
+        # ponytail: removed per-chunk normalization — Voss-McCartney has ~constant variance
         return out

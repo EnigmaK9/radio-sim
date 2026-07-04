@@ -238,7 +238,6 @@ Launch without \cmd{--no-tui} to get the interactive radio faceplate:
     \key{$\leftarrow$} \key{$\rightarrow$} & Tune frequency   & \key{$\uparrow$} \key{$\downarrow$} & Volume \\
     \key{+} \key{-}  & Volume (alt)     & \key{[} \key{]} & RSSI weaker/stronger \\
     \key{R}          & Randomize RSSI   & \key{N} & Next track \\
-    \key{Space}      & Play / Pause     & \key{S} & Toggle source \\
     \bottomrule
 \end{tabular}
 \end{center}
@@ -246,6 +245,7 @@ Launch without \cmd{--no-tui} to get the interactive radio faceplate:
 \begin{tipbox}
     \textbf{Try this:} Launch FM at strong signal, then press \key{[} repeatedly.
     You'll hear the signal degrade in real time --- like driving away from a city.
+    Volume and RSSI changes flash briefly for visual confirmation.
 \end{tipbox}
 
 % ═══════════════════════════════════════════════════════════
@@ -374,10 +374,36 @@ Right on the digital cliff --- alternates between perfect and silence.
     \bottomrule
 \end{tabularx}
 
+% ═══════════════════════════════════════════════════════════
+\section*{v0.2 Changelog}
+% ═══════════════════════════════════════════════════════════
+
+{\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4cm} X@{}}
+    \toprule
+    \textbf{Fix} & \textbf{What changed} \\
+    \midrule
+    FM stereo blend & Strong signals preserve stereo; weak blend to mono (was inverted). \\
+    RSSI intensity & Weak signals now correctly get MORE noise/fading (math was backwards). \\
+    Double degradation & Removed redundant second noise layer from the audio pipeline. \\
+    Pink noise clicks & Persistent generator state --- no 23ms chunk-boundary artifacts. \\
+    Thread race & Fixed crash-on-stop timing between refill and main threads. \\
+    N key & Now actually skips to the next track. \\
+    Arrow keys & Works across xterm, tmux, SSH (application + normal mode). \\
+    Pre-flight check & Clean error if ffmpeg/ffplay missing instead of silent failure. \\
+    Headless mode & Now displays now-playing track info during playback. \\
+    TUI flash & RSSI and volume changes flash briefly for visual confirmation. \\
+    Freq auto-clamp & Frequency jumps to band center on mode switch. \\
+    Metadata sync & Lock-guarded MP3Source access --- no race conditions. \\
+    Skip warnings & Unplayable files logged to stderr instead of silently skipped. \\
+    \bottomrule
+\end{tabularx}
+}
+
 \vspace{5mm}
 \begin{center}
 \rule{0.5\textwidth}{0.4pt}\\[2mm]
-{\small\textcolor{radioGray}{RadioSim {\tiny —} github.com/enigma {\tiny —} July 2026}}\\[1mm]
+{\small\textcolor{radioGray}{RadioSim {\tiny —} github.com/EnigmaK9/radio-sim {\tiny —} July 2026}}\\[1mm]
 {\small\textcolor{radioGray}{Python {\tiny ·} SciPy {\tiny ·} Rich TUI {\tiny ·} ffmpeg {\tiny ·} yt-dlp}}
 \end{center}
 

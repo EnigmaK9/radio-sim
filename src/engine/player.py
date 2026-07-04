@@ -85,14 +85,16 @@ class Player:
 
     @property
     def is_playing(self) -> bool:
-        return self._running and self._process is not None and self._process.poll() is None
+        proc = self._process
+        return self._running and proc is not None and proc.poll() is None
 
     # ---- Internal ----
 
     def _refill_loop(self) -> None:
         """Producer loop — pulls from pipeline, writes to ffplay stdin."""
         while self._running:
-            if self._process is None or self._process.poll() is not None:
+            proc = self._process
+            if proc is None or proc.poll() is not None:
                 break  # ffplay died
 
             if self.pipeline.buffer_fill >= self.pipeline.buffer_capacity - 2:

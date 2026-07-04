@@ -207,7 +207,7 @@ python -m src.main --mode fm --freq 101.1 --source ~/Music/
 │  └──────────────────────────────────────────────────┘    │
 ├─────────────────────────────────────────────────────────┤
 │  FM  AM  AMHD  FMHD  DAB+                               │
-│  [Q]uit [M]ode [←→]Tune [↑↓]Vol [N]ext [R]SSI [S]ource │
+│  [Q]uit [M]ode [←→]Tune [↑↓]Vol [N]ext [R]SSI          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -218,13 +218,12 @@ python -m src.main --mode fm --freq 101.1 --source ~/Music/
 | `Q` / `Esc` | Quit |
 | `M` / `Tab` | Cycle mode: FM → AM → AMHD → FMHD → DAB+ |
 | `←` `→` | Tune frequency down/up (fine) |
-| `↑` `↓` | Volume up/down |
+| `↑` `↓` | Volume up/down (flashes green on change) |
 | `+` `-` | Volume up/down (alternate) |
-| `[` `]` | Decrease/increase RSSI (weaker/stronger signal) |
+| `[` `]` | Decrease/increase RSSI — weaker/stronger signal (flashes on change) |
 | `R` | Randomize RSSI |
-| `Space` | Toggle play/pause |
 | `N` | Next track |
-| `S` | Toggle source type display |
+| `M` / `Tab` | Cycle mode — frequency auto-clamps to band center |
 
 ### Signal Strength Meter
 
@@ -352,3 +351,26 @@ python -m src.main ...
 | `docs/architecture.md` | System architecture |
 | `docs/flowcharts.md` | Signal flow diagrams |
 | `docs/run.md` | Minimal setup & run guide |
+
+---
+
+## v0.2 Changelog
+
+Bug fixes (July 2026):
+
+| Fix | What changed |
+|-----|-------------|
+| **FM stereo blend** | Strong signals correctly preserve stereo; weak blend to mono (was inverted) |
+| **RSSI intensity** | Weak signals now produce MORE noise/fading/crackle (math was backwards) |
+| **Double degradation** | Removed redundant noise layer — audio no longer degraded twice |
+| **Pink noise clicks** | `PinkNoiseGenerator` with persistent state eliminates 23ms artifacts |
+| **Player thread race** | Fixed crash-on-stop timing between refill and main threads |
+| **N key** | Now actually skips to the next track |
+| **Arrow keys** | Works across xterm, tmux, SSH (both normal and application mode) |
+| **Pre-flight check** | Clean error if ffmpeg/ffplay missing, instead of silent failure |
+| **Headless display** | Now shows now-playing track info during playback |
+| **TUI flash** | RSSI and volume changes flash briefly for visual confirmation |
+| **Freq auto-clamp** | Frequency jumps to band center on mode switch |
+| **Metadata sync** | Lock-guarded MP3Source metadata access (no race conditions) |
+| **Skip warnings** | Unplayable files logged to stderr instead of silently skipped |
+| **Dead code** | Removed unused functions, imports, and dead keyboard shortcuts |

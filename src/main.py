@@ -1,7 +1,6 @@
 """RadioSim entry point — wires sources, modes, signal simulation, and TUI."""
 
 import signal
-import sys
 import time
 
 import click
@@ -35,19 +34,6 @@ MODE_DEFAULTS = {
     "fmhd": 101.1,
     "dab": 202.0,
 }
-
-
-def _wrapped_processor(fn, state_ref):
-    """Wrap a mode.process() call so it always receives the current signal_db.
-
-    `state_ref` is a single-element list holding the current SignalSimulator
-    reference, mutable so the TUI can update RSSI without recreating the processor.
-    """
-    def wrapper(chunk: np.ndarray) -> np.ndarray:
-        sim = state_ref[0]
-        mode_fn = fn
-        return sim.apply_degradation(chunk, MODE_ORDER[state_ref[1]])
-    return wrapper
 
 
 MODE_ORDER = ["fm", "am", "amhd", "fmhd", "dab"]
@@ -111,6 +97,17 @@ def main(mode: str, freq: float | None, source: str, rssi: float, volume: float,
       python -m src.main --mode am --freq 880 --source "https://youtube.com/..."
       python -m src.main --mode dab --freq 202.0 --source ./podcasts/
     """
+    # ---- 0. Pre-flight check ----
+    import shutil
+    _missing = []
+    if shutil.which("ffmpeg") is None:
+        _missing.append("ffmpeg")
+    if shutil.which("ffplay") is None:
+        _missing.append("ffplay")
+    if _missing:
+        click.echo(f"Error: {', '.join(_missing)} not found. Install with: sudo apt install ffmpeg", err=True)
+        raise SystemExit(1)
+
     # ---- 1. Select mode ----
     mode_cls = MODE_MAP[mode]
     radio_mode = mode_cls()
@@ -137,9 +134,6 @@ def main(mode: str, freq: float | None, source: str, rssi: float, volume: float,
     # ---- 3. Build pipeline ----
     signal_sim = SignalSimulator(initial_rssi_db=rssi)
 
-    # Shared state for the processor wrapper
-    sim_ref = [signal_sim]  # mutable container
-
     pipeline = AudioPipeline(source=audio_source)
 
     # Mode + signal processor: apply mode EQ/filter, then signal degradation
@@ -147,11 +141,6 @@ def main(mode: str, freq: float | None, source: str, rssi: float, volume: float,
         return radio_mode.process(chunk, signal_sim.rssi)
 
     pipeline.add_processor(mode_processor)
-
-    def degradation_processor(chunk: np.ndarray) -> np.ndarray:
-        return signal_sim.apply_degradation(chunk, mode)
-
-    pipeline.add_processor(degradation_processor)
 
     # ---- 4. Export WAV or start playback ----
     if wav:
@@ -228,6 +217,7 @@ def _run_tui(
         radio_mode = cls()
         # Flush buffer on mode switch to avoid stale audio
         pipeline.flush()
+        tui.state.frequency = MODE_DEFAULTS[new_mode]
 
     def on_freq_change(new_freq: float) -> None:
         pass  # Frequency is cosmetic in simulation; mode processing is the same
@@ -243,6 +233,7 @@ def _run_tui(
         on_freq_change=on_freq_change,
         on_rssi_change=on_rssi_change,
         on_volume_change=on_volume_change,
+        on_next_track=lambda: audio_source.advance_track(),
     )
     tui.state.mode_index = mode_idx
     tui.state.frequency = freq

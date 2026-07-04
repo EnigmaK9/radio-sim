@@ -5,10 +5,12 @@ Simulate realistic radio broadcast reception across five modes: FM, AM, AMHD, FM
 ## Features
 
 - **5 Radio Modes**: FM, AM, AM HD Radio, FM HD Radio, DAB+
-- **Realistic Signal Simulation**: RSSI, noise, fading, multipath interference per mode
-- **Dual Audio Sources**: Local MP3 files (with playlists) or YouTube URLs
-- **Rich Terminal UI**: Interactive radio receiver faceplate with live tuning
-- **Per-Mode Audio Processing**: Correct bandwidth, EQ curves, stereo encoding
+- **Realistic Signal Simulation**: RSSI-driven noise, fading, multipath — stronger signal = cleaner audio
+- **Dual Audio Sources**: Local files (MP3/FLAC/WAV/OGG) with playlists, or YouTube URLs
+- **Rich Terminal UI**: Interactive radio receiver faceplate with live tuning and visual feedback
+- **Per-Mode Audio Processing**: Correct bandwidth, EQ curves, stereo/mono behavior per mode
+- **WAV Export**: Capture processed audio for A/B comparison across modes
+- **Zero native dependencies**: Only needs Python + ffmpeg on PATH
 
 ## Quick Start
 
@@ -20,16 +22,38 @@ python -m src.main --mode fm --freq 101.1 --source ./music/
 
 ## Modes
 
-| Mode | Band | Audio BW | Stereo | Characteristics |
+| Mode | Band | Audio BW | Stereo | Noise Character |
 |------|------|----------|--------|-----------------|
 | FM | 87.5–108 MHz | 50Hz–15kHz | Yes | Hiss, multipath |
-| AM | 530–1710 kHz | 50Hz–5kHz | No | Static, fading |
-| AMHD | 530–1710 kHz | 50Hz–15kHz | Yes | Digital artifacts |
-| FMHD | 87.5–108 MHz | 20Hz–20kHz | Yes | Near-perfect |
-| DAB+ | 174–240 MHz | 20Hz–20kHz | Yes | Burst errors |
+| AM | 530–1710 kHz | 50Hz–5kHz | No | Static, crackle, fading |
+| AMHD | 530–1710 kHz | 50Hz–15kHz | Yes (digital) | Light artifacts, frame drops |
+| FMHD | 87.5–108 MHz | 20Hz–20kHz | Yes | Near-none, rare glitches |
+| DAB+ | 174–240 MHz | 20Hz–20kHz | Yes | Burst errors, cliff effect |
+
+## Keyboard Controls (TUI)
+
+| Key | Action |
+|-----|--------|
+| `Q` / `Esc` | Quit |
+| `M` / `Tab` | Cycle mode: FM → AM → AMHD → FMHD → DAB+ |
+| `←` `→` | Tune frequency |
+| `↑` `↓` | Volume up/down |
+| `[` `]` | RSSI weaker/stronger (affects noise level) |
+| `R` | Randomize RSSI |
+| `N` | Next track |
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [Signal Flowcharts](docs/flowcharts.md)
-- [Run Guide](docs/run.md)
+- [User Guide](docs/user-guide.md) — full manual with recipes
+- [Run Guide](docs/run.md) — minimal setup & troubleshooting
+- [Architecture](docs/architecture.md) — system design & component map
+- [Signal Flowcharts](docs/flowcharts.md) — per-mode processing chains
+- [Improvement Plan](improvements/README.md) — audit results & fix log (v0.2)
+
+## Requirements
+
+- Python 3.10+
+- ffmpeg (for audio decode & playback)
+- yt-dlp (optional, for YouTube sources)
+
+No PortAudio, no pyaudio, no system audio libraries needed — just ffmpeg.

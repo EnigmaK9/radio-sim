@@ -2,6 +2,7 @@
 
 import random
 import subprocess
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -41,6 +42,7 @@ class MP3Source(AudioSource):
         self._process: subprocess.Popen | None = None
         self._track_duration: float = 0.0
         self._bytes_per_frame = self.channels * 2  # s16le
+        self._lock = threading.Lock()
 
     # ---- public API ----
 
@@ -122,16 +124,17 @@ class MP3Source(AudioSource):
         self.playlist.clear()
 
     def metadata(self) -> dict:
-        if self._current_idx >= 0 and self._current_idx < len(self.playlist):
-            path = self.playlist[self._current_idx]
-            return {
-                "title": path.stem,
-                "artist": "",
-                "album": path.parent.name,
-                "file": str(path),
-                "track": f"{self._current_idx + 1}/{len(self.playlist)}",
-            }
-        return {"title": "No track", "artist": "", "album": "", "file": "", "track": "0/0"}
+        with self._lock:
+            if self._current_idx >= 0 and self._current_idx < len(self.playlist):
+                path = self.playlist[self._current_idx]
+                return {
+                    "title": path.stem,
+                    "artist": "",
+                    "album": path.parent.name,
+                    "file": str(path),
+                    "track": f"{self._current_idx + 1}/{len(self.playlist)}",
+                }
+            return {"title": "No track", "artist": "", "album": "", "file": "", "track": "0/0"}
 
     def advance_track(self) -> bool:
         """Skip to next track."""
@@ -158,16 +161,17 @@ class MP3Source(AudioSource):
                 self._process.kill()
             self._process = None
 
-        self._current_idx += 1
-        if self._current_idx >= len(self.playlist):
-            if self.loop:
-                self._current_idx = 0
-                if self.shuffle:
-                    random.shuffle(self.playlist)
-            else:
-                return False
+        with self._lock:
+            self._current_idx += 1
+            if self._current_idx >= len(self.playlist):
+                if self.loop:
+                    self._current_idx = 0
+                    if self.shuffle:
+                        random.shuffle(self.playlist)
+                else:
+                    return False
 
-        path = self.playlist[self._current_idx]
+            path = self.playlist[self._current_idx]
 
         cmd = [
             "ffmpeg",
@@ -188,8 +192,14 @@ class MP3Source(AudioSource):
             )
         except FileNotFoundError:
             raise RuntimeError("ffmpeg not found. Install ffmpeg to play audio files.")
+        except Exception:
+            import sys
 
-        self._current_metadata = self.metadata()
+            print(f"Warning: skipping unplayable file: {path.name}", file=sys.stderr)
+            return self._launch_current()
+
+        with self._lock:
+            self._current_metadata = self.metadata()
         return True
 
     def _silence_chunk(self, n_frames: int) -> np.ndarray:

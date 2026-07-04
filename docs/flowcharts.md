@@ -1,26 +1,29 @@
 # RadioSim — Signal Flowcharts
 
-## Audio Pipeline Flow
+## Audio Pipeline Flow (v0.2 — single-stage processing)
 
 ```mermaid
 flowchart TD
     A[Audio Source] -->|raw PCM float32| B{Mode Type}
-    B -->|FM| C[FM Chain]
-    B -->|AM| D[AM Chain]
-    B -->|AMHD| E[AMHD Chain]
-    B -->|FMHD| F[FMHD Chain]
-    B -->|DAB| G[DAB Chain]
+    B -->|FM| C[FM Chain<br/>EQ + stereo blend + noise + multipath]
+    B -->|AM| D[AM Chain<br/>mono + bandpass + static + crackle + fading]
+    B -->|AMHD| E[AMHD Chain<br/>digital/analog paths + crossfade]
+    B -->|FMHD| F[FMHD Chain<br/>CD quality + subchannels]
+    B -->|DAB| G[DAB Chain<br/>AAC artifacts + cliff effect]
 
-    C --> H[SignalSimulator]
+    C --> H[Volume + int16 cast]
     D --> H
     E --> H
     F --> H
     G --> H
 
-    H -->|degraded audio| I[Ring Buffer]
-    I -->|pop_chunk| J[PyAudio Callback]
-    J -->|int16| K[Speakers]
+    H -->|s16le bytes| I[ffplay subprocess]
+    I -->|ALSA| J[Speakers]
 ```
+
+**v0.2 change:** `SignalSimulator` no longer adds a second degradation layer in the
+pipeline. Each `RadioMode.process()` handles all DSP internally, reading RSSI from
+the shared state. This fixes the double-noise bug where audio was degraded twice.
 
 ## FM Processing Chain
 

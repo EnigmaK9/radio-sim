@@ -51,12 +51,16 @@ class RadioTUI:
         on_freq_change: Callable[[float], None] | None = None,
         on_rssi_change: Callable[[float], None] | None = None,
         on_volume_change: Callable[[float], None] | None = None,
+        on_next_track: Callable[[], None] | None = None,
         on_quit: Callable[[], None] | None = None,
     ):
         self.state = TUIState()
         self.console = Console()
         self._running = False
         self._start_time = time.time()
+        self._dirty = True
+        self._flash_rssi = 0.0
+        self._flash_vol = 0.0
 
         # Callbacks to engine
         self._on_mode_change = on_mode_change or (lambda m: None)
@@ -64,6 +68,7 @@ class RadioTUI:
         self._on_rssi_change = on_rssi_change or (lambda r: None)
         self._on_volume_change = on_volume_change or (lambda v: None)
         self._on_quit = on_quit or (lambda: None)
+        self._on_next_track = on_next_track or (lambda: None)
 
     def update_metadata(self, meta: dict) -> None:
         self.state.metadata = meta
@@ -82,7 +87,9 @@ class RadioTUI:
                     key = self._poll_key()
                     if key:
                         self._handle_key(key)
-                    live.update(self._render())
+                    if self._dirty:
+                        live.update(self._render())
+                        self._dirty = False
                     time.sleep(0.04)  # ~25 fps
         except KeyboardInterrupt:
             pass
@@ -125,8 +132,16 @@ class RadioTUI:
         text = Text()
         text.append(f"  RADIOSIM  │  {mode}  ", style="bold white on blue")
         text.append(f"│  {freq_str} {unit}  ", style="bold cyan")
-        text.append(f"│  RSSI {bars} {self.state.rssi:.0f} dBm  ", style="green")
-        text.append(f"│  Vol: {int(self.state.volume * 100)}%  ", style="yellow")
+        if time.time() - self._flash_rssi < 0.3:
+            rssi_style = "reverse white on green"
+        else:
+            rssi_style = "green"
+        text.append(f"│  RSSI {bars} {self.state.rssi:.0f} dBm  ", style=rssi_style)
+        if time.time() - self._flash_vol < 0.3:
+            vol_style = "reverse white on yellow"
+        else:
+            vol_style = "yellow"
+        text.append(f"│  Vol: {int(self.state.volume * 100)}%  ", style=vol_style)
 
         return Panel(text, box=box.HEAVY, style="blue")
 
@@ -212,7 +227,7 @@ class RadioTUI:
         content = Text()
         content.append(f"  {mode_order_str}\n", style="bold")
         content.append(
-            "  [Q]uit  [M]ode  [←→]Tune  [↑↓]Vol  [N]ext  [R]SSI  [Space]Play  [S]ource",
+            "  [Q]uit  [M]ode  [←→]Tune  [↑↓]Vol  [N]ext  [R]SSI",
             style="dim",
         )
 
@@ -221,17 +236,27 @@ class RadioTUI:
     # ---- keyboard ----
 
     def _poll_key(self) -> str | None:
-        """Non-blocking key poll via rich's getch."""
-        import sys
-        import select
-
-        if select.select([sys.stdin], [], [], 0.0)[0]:
-            try:
-                from rich import getch
-                return getch.getch()
-            except Exception:
-                return None
-        return None
+        import sys, select
+        if not select.select([sys.stdin], [], [], 0.0)[0]:
+            return None
+        try:
+            from rich import getch
+            ch = getch.getch()
+            if ch == '\x1b':
+                # Read rest of escape sequence with short timeout
+                import termios, tty
+                seq = '\x1b'
+                old = termios.tcgetattr(sys.stdin)
+                tty.setcbreak(sys.stdin)
+                try:
+                    while select.select([sys.stdin], [], [], 0.01)[0]:
+                        seq += sys.stdin.read(1)
+                finally:
+                    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old)
+                return seq
+            return ch
+        except Exception:
+            return None
 
     def _handle_key(self, key: str) -> None:
         if key in ("q", "Q", "\x1b"):  # q or Esc
@@ -239,46 +264,63 @@ class RadioTUI:
         elif key in ("m", "M", "\t"):  # m or Tab
             self.state.mode_index = (self.state.mode_index + 1) % len(MODE_ORDER)
             self._on_mode_change(MODE_ORDER[self.state.mode_index])
+            self._dirty = True
         elif key in ("n", "N"):
-            pass  # next track — handled by engine callback
-        elif key in (" ",):
-            self.state.playing = not self.state.playing
+            self._on_next_track()
+            self._dirty = True
         elif key in ("r", "R"):
             # Randomize RSSI
             import random
             self.state.rssi = random.uniform(-90, -30)
             self._on_rssi_change(self.state.rssi)
+            self._flash_rssi = time.time()
+            self._dirty = True
         elif key in ("[",):
             self.state.rssi = max(-120, self.state.rssi - 5)
             self._on_rssi_change(self.state.rssi)
+            self._flash_rssi = time.time()
+            self._dirty = True
         elif key in ("]",):
             self.state.rssi = min(-10, self.state.rssi + 5)
             self._on_rssi_change(self.state.rssi)
+            self._flash_rssi = time.time()
+            self._dirty = True
         # Arrow keys come as escape sequences
-        elif key == "\x1b[A":  # Up arrow
+        elif key in ("\x1b[A", "\x1bOA"):  # Up arrow
             self.state.volume = min(1.0, self.state.volume + 0.05)
             self._on_volume_change(self.state.volume)
-        elif key == "\x1b[B":  # Down arrow
+            self._flash_vol = time.time()
+            self._dirty = True
+        elif key in ("\x1b[B", "\x1bOB"):  # Down arrow
             self.state.volume = max(0.0, self.state.volume - 0.05)
             self._on_volume_change(self.state.volume)
-        elif key == "\x1b[C":  # Right arrow
+            self._flash_vol = time.time()
+            self._dirty = True
+        elif key in ("\x1b[C", "\x1bOC"):  # Right arrow
             step = self._step_size(MODE_ORDER[self.state.mode_index])
             self.state.frequency += step
             self.state.frequency = round(self.state.frequency, 1)
             self._on_freq_change(self.state.frequency)
-        elif key == "\x1b[D":  # Left arrow
+            self._dirty = True
+        elif key in ("\x1b[D", "\x1bOD"):  # Left arrow
             step = self._step_size(MODE_ORDER[self.state.mode_index])
             self.state.frequency -= step
             self.state.frequency = round(self.state.frequency, 1)
             self._on_freq_change(self.state.frequency)
+            self._dirty = True
         elif key in ("+", "="):
             self.state.volume = min(1.0, self.state.volume + 0.05)
             self._on_volume_change(self.state.volume)
+            self._flash_vol = time.time()
+            self._dirty = True
         elif key in ("-", "_"):
             self.state.volume = max(0.0, self.state.volume - 0.05)
             self._on_volume_change(self.state.volume)
+            self._flash_vol = time.time()
+            self._dirty = True
         elif key == "s":
             self.state.source_type = "youtube" if self.state.source_type == "mp3" else "mp3"
+            self._dirty = True
 
     # ---- helpers ----
 

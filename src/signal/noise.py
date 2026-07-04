@@ -18,11 +18,33 @@ def white_noise(shape: tuple[int, ...], amplitude: float = 0.01) -> np.ndarray:
     return np.random.randn(*shape).astype(np.float32) * amplitude
 
 
+class PinkNoiseGenerator:
+    """Persistent pink (1/f) noise generator — no chunk-boundary artifacts."""
+
+    def __init__(self, n_octaves: int = 5, amplitude: float = 0.01):
+        self.n_octaves = n_octaves
+        self.amplitude = amplitude
+        self.state = np.zeros(n_octaves, dtype=np.float32)
+
+    def generate(self, n_samples: int, n_channels: int = 2) -> np.ndarray:
+        out = np.zeros((n_samples, n_channels), dtype=np.float32)
+        for ch in range(n_channels):
+            for i in range(n_samples):
+                k = np.random.randint(self.n_octaves)
+                self.state[k] = np.random.randn()
+                out[i, ch] = np.mean(self.state)
+        std = np.std(out) + 1e-8
+        return (out / std) * self.amplitude
+
+
+# deprecated — use PinkNoiseGenerator instead
 def pink_noise(n_samples: int, n_channels: int = 2, amplitude: float = 0.01) -> np.ndarray:
     """Approximate 1/f (pink) noise via the Voss-McCartney algorithm.
 
     More natural-sounding than pure white noise — used for analog
     receiver hiss and atmospheric noise.
+
+    Deprecated: use PinkNoiseGenerator for persistent state.
     """
     n_octaves = 5
     state = np.zeros(n_octaves, dtype=np.float32)

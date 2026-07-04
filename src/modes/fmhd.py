@@ -1,6 +1,7 @@
 """FMHD (FM HD Radio) — hybrid digital FM, 87.5–108 MHz, 20Hz-20kHz, CD quality."""
 
 import numpy as np
+from scipy import signal as scipy_signal
 
 from src.modes.base import ModeParameters, RadioMode
 from src.signal.filters import PRESETS, apply_eq, stereo_blend
@@ -34,6 +35,7 @@ class FMHDMode(RadioMode):
         self.subchannel = max(0, min(subchannel, self.MAX_SUBCHANNELS - 1))
         # ponytail: hardcoded subchannel qualities — real HD Radio varies by station config
         self._subchannel_bitrates = [300, 128, 64]  # kbps equivalent quality
+        self._filter_cache = {}
 
     def process(self, audio: np.ndarray, signal_db: float) -> np.ndarray:
         blend = float(np.clip((-80.0 - signal_db) / 30.0, 0.0, 1.0))
@@ -89,12 +91,13 @@ class FMHDMode(RadioMode):
 
         # High-frequency roll-off for low-bitrate subchannels
         if quality < 0.5:
-            # Simple moving-average smoothing to simulate SBR artifacts
-            from scipy import signal as scipy_signal
-
-            sos = scipy_signal.butter(
-                2, 8000 + quality * 8000, btype="low", fs=self._sample_rate, output="sos"
-            )
+            cache_key = ("fmhd_sub", self.subchannel)
+            if cache_key not in self._filter_cache:
+                cutoff = 8000 + quality * 8000
+                self._filter_cache[cache_key] = scipy_signal.butter(
+                    2, cutoff, btype="low", fs=self._sample_rate, output="sos"
+                )
+            sos = self._filter_cache[cache_key]
             audio = scipy_signal.sosfilt(sos, audio, axis=0)
 
         # Quantization noise

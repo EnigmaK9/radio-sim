@@ -3,6 +3,7 @@
 import numpy as np
 
 from src.signal.noise import (
+    PinkNoiseGenerator,
     apply_multipath,
     fading_envelope,
     impulsive_noise,
@@ -51,6 +52,7 @@ class SignalSimulator:
         self.noise_floor: float = -100.0  # dBm thermal noise floor
         self.frequency_mhz: float = 98.0  # default FM center
         self._fading_phase: float = 0.0
+        self._pink_gen = PinkNoiseGenerator()
 
     def update_rssi(self, delta_db: float) -> None:
         """Adjust signal strength. Clamped to [-120, -10] dBm."""
@@ -67,7 +69,7 @@ class SignalSimulator:
         -60 dBm → ~0.015  (barely audible)
         -90 dBm → ~0.10   (noise dominates)
         """
-        clamped = max(self.noise_floor, min(-20.0, self.rssi))
+        clamped = max(self.noise_floor, min(-10.0, self.rssi))
         normalized = (clamped - self.noise_floor) / (-20.0 - self.noise_floor)
         return (1.0 - normalized) * 0.12
 
@@ -123,12 +125,12 @@ class SignalSimulator:
         n_samples, n_channels = audio.shape
 
         # Pink + white static (AM's characteristic frying sound)
-        pink = pink_noise(n_samples, n_channels, amplitude=noise_amp * 1.2)
+        pink = self._pink_gen.generate(n_samples, n_channels) * (noise_amp * 1.2 / self._pink_gen.amplitude)
         white = white_noise(audio.shape, amplitude=noise_amp * 0.8)
         static = pink + white
 
         # Impulsive crackle
-        crackle_rate = 0.5 + (1.0 - noise_amp / 0.12) * 4.5  # 0.5–5 / sec
+        crackle_rate = 0.5 + (noise_amp / 0.12) * 4.5  # 0.5–5 / sec
         crackle = impulsive_noise(
             n_samples, n_channels,
             rate_per_second=crackle_rate,
@@ -137,7 +139,7 @@ class SignalSimulator:
         )
 
         # Deep Rayleigh-like fading
-        fade_depth = 0.15 + (1.0 - noise_amp / 0.12) * 0.7
+        fade_depth = 0.15 + (noise_amp / 0.12) * 0.7
         env = fading_envelope(n_samples, rate_hz=0.5, depth=fade_depth, sample_rate=44100)
 
         out = (audio + static + crackle) * env[:, np.newaxis]
