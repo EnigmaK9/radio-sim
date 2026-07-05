@@ -101,8 +101,8 @@ def main(mode: str, freq: float | None, source: str, rssi: float, volume: float,
     _missing = []
     if shutil.which("ffmpeg") is None:
         _missing.append("ffmpeg")
-    if shutil.which("ffplay") is None:
-        _missing.append("ffplay")
+    if shutil.which("aplay") is None:
+        _missing.append("aplay")
     if _missing:
         click.echo(f"Error: {', '.join(_missing)} not found. Install with: sudo apt install ffmpeg", err=True)
         raise SystemExit(1)
