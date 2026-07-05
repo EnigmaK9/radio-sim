@@ -117,32 +117,8 @@ def fading_envelope(
 
     # Normalize and map to [1-depth, 1+depth*0.2]
     envelope = envelope / (np.std(envelope) + 1e-8)
-    envelope = 1.0 - depth * 0.5 + depth * 0.5 * np.tanh(envelope)
+    envelope = 1.0 + depth * 0.5 * np.tanh(envelope)
     return np.clip(envelope.astype(np.float32), 0.05, 1.3)
-
-
-def multipath_ir(
-    n_taps: int = 3,
-    max_delay_samples: int = 5,
-    depth: float = 0.3,
-) -> np.ndarray:
-    """Generate a multipath impulse response (comb filter kernel).
-
-    Args:
-        n_taps: number of echo paths (including direct).
-        max_delay_samples: maximum delay in samples.
-        depth: echo gain relative to direct path.
-
-    Returns:
-        1-D float32 array representing the FIR kernel.
-    """
-    ir = np.zeros(max_delay_samples + 1, dtype=np.float32)
-    ir[0] = 1.0  # direct path
-    for _ in range(n_taps - 1):
-        delay = np.random.randint(1, max_delay_samples + 1)
-        gain = np.random.uniform(0.01, depth)
-        ir[delay] += gain
-    return ir
 
 
 def apply_multipath(audio: np.ndarray, depth: float) -> np.ndarray:

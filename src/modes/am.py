@@ -114,7 +114,7 @@ class AMMode(RadioMode):
         envelope = scipy_signal.sosfilt(sos, raw)
         # Normalize and scale: envelope oscillates between 1-depth and 1
         envelope = envelope / (np.std(envelope) + 1e-8)
-        envelope = 1.0 - depth * 0.5 + depth * 0.5 * envelope
+        envelope = 1.0 + depth * 0.5 * envelope
         envelope = np.clip(envelope[:, np.newaxis], 0.1, 1.5)
 
         return audio * envelope.astype(np.float32)

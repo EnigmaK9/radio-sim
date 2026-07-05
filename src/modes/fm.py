@@ -30,6 +30,9 @@ class FMMode(RadioMode):
     # ---- public ----
 
     def process(self, audio: np.ndarray, signal_db: float) -> np.ndarray:
+        # Expand mono to stereo — FM is a stereo mode
+        if audio.ndim == 1 or audio.shape[1] == 1:
+            audio = np.column_stack([audio.ravel(), audio.ravel()]).astype(np.float32)
         audio = self._apply_stereo_blend(audio, signal_db)
         audio = self._apply_bandpass(audio)
         audio = self._apply_deemphasis(audio)
@@ -75,7 +78,7 @@ class FMMode(RadioMode):
         """
         tau = 75e-6
         dt = 1.0 / self._sample_rate
-        alpha = dt / (tau + dt)  # ~0.023 at 44.1 kHz
+        alpha = dt / (tau + dt)  # ~0.232 at 44.1 kHz
         # Apply per channel
         out = np.zeros_like(audio)
         for ch in range(audio.shape[1]):

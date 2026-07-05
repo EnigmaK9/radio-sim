@@ -1,7 +1,6 @@
 """YouTube audio source — streams audio via yt-dlp + ffmpeg."""
 
 import subprocess
-import threading
 from pathlib import Path
 
 import numpy as np
@@ -28,7 +27,6 @@ class YouTubeSource(AudioSource):
 
         self._process: subprocess.Popen | None = None
         self._metadata: dict = {}
-        self._lock = threading.Lock()
         self._bytes_per_frame = 4  # s16le stereo = 2 ch × 2 bytes
 
     # ---- public API ----

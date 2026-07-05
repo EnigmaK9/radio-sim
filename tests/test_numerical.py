@@ -96,8 +96,8 @@ def test_fading_mean_near_one():
     np.random.seed(42)
     env = fading_envelope(SR * 10, rate_hz=0.5, depth=0.3, sample_rate=SR)
     mean = float(np.mean(env))
-    # Envelope mean is 1 - depth/2 per audit finding — verify within 10%
-    expected = 1.0 - 0.3 / 2
+    # Envelope mean should be ~1.0 (centered around unity after bias fix)
+    expected = 1.0
     assert abs(mean - expected) < 0.05, f"Fading mean {mean:.4f}, expected ~{expected:.4f}"
     print(f"  PASS: fading envelope mean={mean:.3f} (expected ~{expected:.3f})")
 

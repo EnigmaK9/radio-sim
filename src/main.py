@@ -238,6 +238,7 @@ def _run_tui(
         on_rssi_change=on_rssi_change,
         on_volume_change=on_volume_change,
         on_next_track=lambda: audio_source.advance_track(),
+        get_display_info=lambda: radio_mode.display_info(),
     )
     tui.state.mode_index = mode_idx
     tui.state.frequency = freq

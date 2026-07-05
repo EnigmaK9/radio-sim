@@ -81,6 +81,35 @@ class RadioMode(ABC):
             meta["radiotext"] = f"{source_meta.get('artist', '')} — {source_meta.get('title', '')}"
         return meta
 
+    def display_info(self) -> dict:
+        """Display information for the TUI station info panel."""
+        p = self.params
+        bw_l = int(p.audio_bandwidth_low)
+        bw_h = int(p.audio_bandwidth_high)
+
+        band = f"{p.frequency_min} – {p.frequency_max} {p.frequency_unit}"
+        bw = f"{bw_l} Hz – {bw_h / 1000:.0f} kHz" if bw_h >= 1000 else f"{bw_l} Hz – {bw_h} Hz"
+
+        if p.stereo:
+            stereo = "● Yes (digital)" if p.name == "AMHD" else "● Yes"
+        else:
+            stereo = "○ No"
+
+        descriptions = {
+            "FM": "Hiss + multipath",
+            "AM": "Static + fading",
+            "AMHD": "Digital artifacts",
+            "FMHD": "Rare glitches",
+            "DAB+": "Burst errors / cliff",
+        }
+
+        return {
+            "band": band,
+            "audio_bw": bw,
+            "stereo": stereo,
+            "noise": descriptions.get(p.name, ""),
+        }
+
     def _noise_level_from_rssi(self, signal_db: float, noise_floor_db: float = -100) -> float:
         """Convert RSSI in dBm to a noise amplitude factor.
 

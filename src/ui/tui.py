@@ -8,13 +8,9 @@ from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import BarColumn, Progress, TextColumn
 from rich.table import Table
 from rich.text import Text
 from rich import box
-
-from src.modes.base import RadioMode
-from src.signal.propagation import SignalSimulator
 
 
 @dataclass
@@ -53,6 +49,7 @@ class RadioTUI:
         on_volume_change: Callable[[float], None] | None = None,
         on_next_track: Callable[[], None] | None = None,
         on_quit: Callable[[], None] | None = None,
+        get_display_info: Callable[[], dict] | None = None,
     ):
         self.state = TUIState()
         self.console = Console()
@@ -69,6 +66,7 @@ class RadioTUI:
         self._on_volume_change = on_volume_change or (lambda v: None)
         self._on_quit = on_quit or (lambda: None)
         self._on_next_track = on_next_track or (lambda: None)
+        self._get_display_info = get_display_info or (lambda: {})
 
     def update_metadata(self, meta: dict) -> None:
         self.state.metadata = meta
@@ -151,7 +149,6 @@ class RadioTUI:
         unit = "MHz" if mode in ("FM", "FMHD", "DAB+") else "kHz"
 
         # Frequency dial as ASCII art
-        dial_width = 35
         bar = self._freq_bar(freq, mode)
 
         content = Text()
@@ -177,34 +174,13 @@ class RadioTUI:
         table.add_column("Property", style="dim", width=14)
         table.add_column("Value", style="bold")
 
-        bands = {
-            "FM": "87.5 – 108.0 MHz",
-            "AM": "530 – 1710 kHz",
-            "AMHD": "530 – 1710 kHz",
-            "FMHD": "87.5 – 108.0 MHz",
-            "DAB+": "174 – 240 MHz",
-        }
-        bw = {
-            "FM": "50 Hz – 15 kHz",
-            "AM": "50 Hz – 5 kHz",
-            "AMHD": "50 Hz – 15 kHz",
-            "FMHD": "20 Hz – 20 kHz",
-            "DAB+": "20 Hz – 20 kHz",
-        }
-        stereo_map = {"FM": "● Yes", "AM": "○ No", "AMHD": "● Yes (digital)", "FMHD": "● Yes", "DAB+": "● Yes"}
-        noise_map = {
-            "FM": "Hiss + multipath",
-            "AM": "Static + fading",
-            "AMHD": "Digital artifacts",
-            "FMHD": "Rare glitches",
-            "DAB+": "Burst errors / cliff",
-        }
+        info = self._get_display_info()
 
         table.add_row("Mode:", f"[cyan]{mode}[/cyan]")
-        table.add_row("Band:", bands.get(mode, ""))
-        table.add_row("Audio BW:", bw.get(mode, ""))
-        table.add_row("Stereo:", stereo_map.get(mode, ""))
-        table.add_row("Noise:", noise_map.get(mode, ""))
+        table.add_row("Band:", info.get("band", ""))
+        table.add_row("Audio BW:", info.get("audio_bw", ""))
+        table.add_row("Stereo:", info.get("stereo", ""))
+        table.add_row("Noise:", info.get("noise", ""))
         table.add_row("RSSI:", f"{self.state.rssi:.0f} dBm  {self._rssi_bars(self.state.rssi)}")
         table.add_row("Buffer:", f"{self.state.buffer_fill}/{self.state.buffer_capacity} chunks")
 

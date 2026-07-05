@@ -18,11 +18,9 @@ class Player:
         self,
         pipeline: object,  # AudioPipeline
         volume: float = 0.8,
-        device_index: int | None = None,
     ):
         self.pipeline = pipeline
         self.volume = max(0.0, min(1.0, volume))
-        self.device_index = device_index  # ignored; ffplay uses system default
 
         self._process: subprocess.Popen | None = None
         self._running = False
