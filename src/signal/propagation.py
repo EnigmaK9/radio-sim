@@ -31,7 +31,7 @@ class SignalSimulator:
     """Tracks RSSI state for the radio pipeline."""
 
     def __init__(self, initial_rssi_db: float = -45.0):
-        self.rssi: float = initial_rssi_db
+        self.rssi: float = float(np.clip(initial_rssi_db, -120.0, -10.0))
         self.noise_floor: float = -100.0  # dBm thermal noise floor
 
     def update_rssi(self, delta_db: float) -> None:

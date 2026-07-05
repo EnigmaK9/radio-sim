@@ -27,8 +27,6 @@ class TUIState:
 
     # Read-only from engine
     metadata: dict | None = None
-    buffer_fill: int = 0
-    buffer_capacity: int = 32
 
 
 MODE_ORDER = ["fm", "am", "amhd", "fmhd", "dab"]
@@ -70,10 +68,6 @@ class RadioTUI:
 
     def update_metadata(self, meta: dict) -> None:
         self.state.metadata = meta
-
-    def update_buffer(self, fill: int, capacity: int) -> None:
-        self.state.buffer_fill = fill
-        self.state.buffer_capacity = capacity
 
     def run(self) -> None:
         """Main TUI event loop."""
@@ -182,7 +176,6 @@ class RadioTUI:
         table.add_row("Stereo:", info.get("stereo", ""))
         table.add_row("Noise:", info.get("noise", ""))
         table.add_row("RSSI:", f"{self.state.rssi:.0f} dBm  {self._rssi_bars(self.state.rssi)}")
-        table.add_row("Buffer:", f"{self.state.buffer_fill}/{self.state.buffer_capacity} chunks")
 
         # Now playing
         meta = self.state.metadata or {}

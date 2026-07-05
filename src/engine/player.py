@@ -96,16 +96,10 @@ class Player:
                 if proc is None or proc.poll() is not None:
                     break
 
-                if self.pipeline.buffer_fill >= self.pipeline.buffer_capacity - 2:
-                    time.sleep(0.005)
-                    continue
-
-                ok = self.pipeline.push_chunk()
-                if not ok:
+                chunk = self.pipeline.push_chunk()
+                if chunk is None:
                     time.sleep(0.1)
                     continue
-
-                chunk = self.pipeline.pop_chunk()
                 self.total_chunks += 1
 
                 if np.all(chunk == 0):

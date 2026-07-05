@@ -18,6 +18,7 @@ from src.modes.fmhd import FMHDMode
 from src.signal.propagation import SignalSimulator
 from src.sources.mp3 import MP3Source
 from src.sources.youtube import YouTubeSource
+from src.ui.tui import MODE_ORDER
 
 MODE_MAP: dict[str, type[RadioMode]] = {
     "fm": FMMode,
@@ -35,8 +36,6 @@ MODE_DEFAULTS = {
     "dab": 202.0,
 }
 
-
-MODE_ORDER = ["fm", "am", "amhd", "fmhd", "dab"]
 
 
 @click.command()
@@ -177,10 +176,9 @@ def _export_wav(
     click.echo(f"Exporting {duration}s of {mode.upper()} radio to {path} ...")
 
     while remaining > 0:
-        ok = pipeline.push_chunk()
-        if not ok:
+        chunk = pipeline.push_chunk()
+        if chunk is None:
             break
-        chunk = pipeline.pop_chunk()
         chunks.append(chunk)
         remaining -= chunk.shape[0]
 
@@ -209,7 +207,7 @@ def _run_tui(
     volume: float,
 ) -> None:
     """Launch the Rich TUI and wire callbacks to the engine."""
-    from src.ui.tui import MODE_ORDER, RadioTUI
+    from src.ui.tui import RadioTUI
 
     mode_idx = MODE_ORDER.index(mode) if mode in MODE_ORDER else 0
 
@@ -219,8 +217,6 @@ def _run_tui(
         mode = new_mode
         cls = MODE_MAP[new_mode]
         radio_mode = cls()
-        # Flush buffer on mode switch to avoid stale audio
-        pipeline.flush()
         tui.state.frequency = MODE_DEFAULTS[new_mode]
 
     def on_freq_change(new_freq: float) -> None:
@@ -260,7 +256,6 @@ def _run_tui(
     def metadata_loop():
         while tui._running:
             tui.update_metadata(audio_source.metadata())
-            tui.update_buffer(pipeline.buffer_fill, pipeline.buffer_capacity)
             time.sleep(0.5)
 
     meta_thread = threading.Thread(target=metadata_loop, daemon=True)

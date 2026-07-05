@@ -167,13 +167,15 @@ class MP3Source(AudioSource):
         with self._lock:
             self._current_idx += 1
             if self._current_idx >= len(self.playlist):
-                if self.loop:
+                if self.loop and len(self.playlist) > 0:
                     self._current_idx = 0
                     if self.shuffle:
                         random.shuffle(self.playlist)
                 else:
                     return False
 
+            if self._current_idx >= len(self.playlist):
+                return False  # empty playlist guard
             path = self.playlist[self._current_idx]
 
         cmd = [

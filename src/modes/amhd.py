@@ -3,8 +3,8 @@
 import numpy as np
 
 from src.modes.base import ModeParameters, RadioMode
-from src.signal.filters import PRESETS, apply_eq, mono_mixdown, stereo_blend
-from src.signal.noise import fading_envelope, impulsive_noise, pink_noise, white_noise
+from src.signal.filters import PRESETS, apply_eq, mono_mixdown
+from src.signal.noise import fading_envelope, pink_noise, white_noise
 
 
 class AMHDMode(RadioMode):
