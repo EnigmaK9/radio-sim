@@ -92,35 +92,40 @@ class Player:
 
     def _refill_loop(self) -> None:
         """Producer loop — pulls from pipeline, writes to ffplay stdin."""
-        while self._running:
-            proc = self._process
-            if proc is None or proc.poll() is not None:
-                break  # ffplay died
+        try:
+            while self._running:
+                proc = self._process
+                if proc is None or proc.poll() is not None:
+                    break
 
-            if self.pipeline.buffer_fill >= self.pipeline.buffer_capacity - 2:
-                time.sleep(0.005)
-                continue
+                if self.pipeline.buffer_fill >= self.pipeline.buffer_capacity - 2:
+                    time.sleep(0.005)
+                    continue
 
-            ok = self.pipeline.push_chunk()
-            if not ok:
-                time.sleep(0.1)
-                continue
+                ok = self.pipeline.push_chunk()
+                if not ok:
+                    time.sleep(0.1)
+                    continue
 
-            # Pull the chunk we just pushed and send to ffplay
-            chunk = self.pipeline.pop_chunk()
-            self.total_chunks += 1
+                chunk = self.pipeline.pop_chunk()
+                self.total_chunks += 1
 
-            if np.all(chunk == 0):
-                self.underruns += 1
+                if np.all(chunk == 0):
+                    self.underruns += 1
 
-            # float32 [-1,1] → int16 → bytes
-            chunk = chunk * self.volume
-            int_data = (np.clip(chunk, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
+                # Guard against NaN/Inf
+                chunk = np.nan_to_num(chunk, nan=0.0, posinf=1.0, neginf=-1.0)
+                chunk = chunk * self.volume
+                int_data = (np.clip(chunk, -1.0, 1.0) * 32767.0).astype(np.int16).tobytes()
 
-            try:
-                self._process.stdin.write(int_data)
-            except (BrokenPipeError, OSError):
-                break  # ffplay closed
+                try:
+                    proc.stdin.write(int_data)
+                except (BrokenPipeError, OSError, ValueError):
+                    break
+        except Exception:
+            import sys, traceback
+            print("Audio refill thread crashed — playback stopped", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
 
     @staticmethod
     def list_devices() -> list[dict]:

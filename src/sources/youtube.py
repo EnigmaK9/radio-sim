@@ -103,13 +103,21 @@ class YouTubeSource(AudioSource):
     def close(self) -> None:
         """Terminate subprocesses."""
         for proc in [self._process, getattr(self, "_ffmpeg_process", None)]:
-            if proc is not None:
+            if proc is None:
+                continue
+            try:
+                if proc.stdout and not proc.stdout.closed:
+                    proc.stdout.close()
+            except Exception:
+                pass
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
                 try:
-                    proc.stdout.close() if proc.stdout else None
-                    proc.terminate()
-                    proc.wait(timeout=3)
-                except (ProcessLookupError, subprocess.TimeoutExpired):
                     proc.kill()
+                except Exception:
+                    pass
         self._process = None
         self._ffmpeg_process = None
 

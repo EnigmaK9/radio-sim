@@ -76,7 +76,7 @@ def mono_mixdown(audio: np.ndarray) -> np.ndarray:
     """Convert stereo to dual-mono: (L + R) / 2 → both channels."""
     if audio.shape[1] < 2:
         return audio
-    mono = np.mean(audio[:, :2], axis=1, keepdims=True)
+    mono = np.mean(audio[:, :2], axis=1, keepdims=True, dtype=np.float32)
     return np.repeat(mono, audio.shape[1], axis=1)
 
 

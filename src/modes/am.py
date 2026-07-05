@@ -39,14 +39,14 @@ class AMMode(RadioMode):
         audio = self._mix_static(audio, signal_db)
         audio = self._inject_crackle(audio, signal_db)
         audio = self._apply_fading(audio, signal_db)
-        return audio
+        return audio.astype(np.float32, copy=False)
 
     # ---- processing stages ----
 
     def _apply_mono(self, audio: np.ndarray) -> np.ndarray:
         """Mix stereo to dual-mono (average L+R)."""
         if audio.shape[1] >= 2:
-            mono = np.mean(audio[:, :2], axis=1, keepdims=True)
+            mono = np.mean(audio[:, :2], axis=1, keepdims=True, dtype=np.float32)
             return np.repeat(mono, audio.shape[1], axis=1)
         return audio
 

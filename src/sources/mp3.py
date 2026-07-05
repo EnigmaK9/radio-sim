@@ -75,9 +75,11 @@ class MP3Source(AudioSource):
         """Read next chunk from ffmpeg stdout. Auto-advances on EOF."""
         n_bytes = n_frames * self._bytes_per_frame
         raw = bytearray()
+        skips = 0
+        max_skips = len(self.playlist) + 1  # prevent infinite loop if all files corrupt
 
         # Read in a loop — pipes may return partial data
-        while len(raw) < n_bytes:
+        while len(raw) < n_bytes and skips < max_skips:
             if self._process is None or self._process.stdout is None:
                 if not self._launch_current():
                     break
@@ -85,11 +87,12 @@ class MP3Source(AudioSource):
 
             try:
                 data = self._process.stdout.read(n_bytes - len(raw))
-            except (BrokenPipeError, OSError):
+            except (BrokenPipeError, OSError, ValueError):
                 data = b""
 
             if not data:
                 # EOF on this track — advance to next
+                skips += 1
                 if not self._launch_current():
                     break
                 continue
@@ -198,8 +201,7 @@ class MP3Source(AudioSource):
             print(f"Warning: skipping unplayable file: {path.name}", file=sys.stderr)
             return self._launch_current()
 
-        with self._lock:
-            self._current_metadata = self.metadata()
+        # ponytail: metadata() reads _current_idx/playlist directly, no cached field needed
         return True
 
     def _silence_chunk(self, n_frames: int) -> np.ndarray:

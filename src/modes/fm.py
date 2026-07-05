@@ -35,7 +35,7 @@ class FMMode(RadioMode):
         audio = self._apply_deemphasis(audio)
         audio = self._apply_multipath(audio, signal_db)
         audio = self._mix_noise(audio, signal_db)
-        return audio
+        return audio.astype(np.float32, copy=False)
 
     # ---- processing stages ----
 
@@ -49,13 +49,13 @@ class FMMode(RadioMode):
             return audio
 
         # Blend factor: 0 = full stereo (strong), 1 = full mono (weak)
-        blend = float(np.clip((-70 - signal_db) / 20.0, 0.0, 1.0))
+        blend = np.float32(np.clip((-70 - signal_db) / 20.0, 0.0, 1.0))
         if blend <= 0.0:
             return audio
 
-        mono = np.mean(audio, axis=1, keepdims=True)
-        mono = np.repeat(mono, 2, axis=1)
-        return (1 - blend) * audio + blend * mono
+        mono = np.mean(audio, axis=1, keepdims=True, dtype=np.float32)
+        mono = np.repeat(mono, 2, axis=1).astype(np.float32)
+        return ((1.0 - blend) * audio + blend * mono).astype(np.float32)
 
     def _apply_bandpass(self, audio: np.ndarray) -> np.ndarray:
         """Butterworth bandpass 50 Hz – 15 kHz."""

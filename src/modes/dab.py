@@ -62,7 +62,7 @@ class DABMode(RadioMode):
         # Cliff effect: burst errors and mutes below threshold
         audio = self._apply_burst_errors(audio, signal_db)
 
-        return audio
+        return audio.astype(np.float32, copy=False)
 
     def _apply_codec_artifacts(self, audio: np.ndarray) -> np.ndarray:
         """Simulate HE-AAC v2 artifacts at different bitrates.

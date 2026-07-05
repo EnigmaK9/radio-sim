@@ -63,6 +63,7 @@ class AudioPipeline:
         if processed.shape != (self.chunk_size, self.channels):
             processed = self._resize_chunk(processed)
 
+        processed = np.nan_to_num(processed, nan=0.0, posinf=1.0, neginf=-1.0)
         processed = np.clip(processed, -1.0, 1.0, out=processed)
         self._buffer.append(processed)
         return True

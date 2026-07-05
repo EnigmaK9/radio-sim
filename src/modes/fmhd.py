@@ -44,10 +44,10 @@ class FMHDMode(RadioMode):
         analog = self._analog_path(audio.copy(), signal_db)
 
         if blend <= 0.0:
-            return digital
+            return digital.astype(np.float32, copy=False)
         elif blend >= 1.0:
-            return analog
-        return (1.0 - blend) * digital + blend * analog
+            return analog.astype(np.float32, copy=False)
+        return ((1.0 - blend) * digital + blend * analog).astype(np.float32, copy=False)
 
     # ---- paths ----
 

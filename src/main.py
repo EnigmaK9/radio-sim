@@ -147,10 +147,14 @@ def main(mode: str, freq: float | None, source: str, rssi: float, volume: float,
         _export_wav(radio_mode, signal_sim, audio_source, pipeline, mode, volume, wav, duration)
     else:
         player = Player(pipeline, volume=volume)
-        if tui:
-            _run_tui(radio_mode, signal_sim, audio_source, pipeline, player, mode, freq, volume)
-        else:
-            _run_headless(audio_source, pipeline, player)
+        try:
+            if tui:
+                _run_tui(radio_mode, signal_sim, audio_source, pipeline, player, mode, freq, volume)
+            else:
+                _run_headless(audio_source, pipeline, player)
+        finally:
+            player.stop()
+            audio_source.close()
 
 
 def _export_wav(
