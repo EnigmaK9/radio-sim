@@ -29,7 +29,6 @@ class AMMode(RadioMode):
 
     def __init__(self):
         super().__init__()
-        self._pink_state = np.zeros(5, dtype=np.float32)  # Voss-McCartney state
 
     # ---- public ----
 
@@ -120,13 +119,15 @@ class AMMode(RadioMode):
         return audio * envelope.astype(np.float32)
 
     def _generate_pink(self, n_samples: int, n_channels: int) -> np.ndarray:
-        """Approximate pink (1/f) noise via Voss-McCartney algorithm."""
-        out = np.zeros((n_samples, n_channels), dtype=np.float32)
-        for ch in range(n_channels):
-            for i in range(n_samples):
-                # Randomly replace one of 5 octave generators
-                k = np.random.randint(5)
-                self._pink_state[k] = np.random.randn()
-                out[i, ch] = np.mean(self._pink_state)
-        # ponytail: removed per-chunk normalization — Voss-McCartney has ~constant variance
-        return out
+        """Vectorized pink (1/f) noise via FFT filtering — O(n log n).
+
+        ponytail: per-sample Voss-McCartney replaced with FFT approach for speed.
+        Normalized to match old 5-octave Voss-McCartney amplitude (std ~1/sqrt(5)).
+        """
+        white = np.random.randn(n_samples, n_channels).astype(np.float32)
+        spectrum = np.fft.rfft(white, axis=0)
+        freq = np.fft.rfftfreq(n_samples)
+        freq[0] = 1.0
+        pink = np.fft.irfft(spectrum / np.sqrt(freq[:, np.newaxis]), n=n_samples, axis=0)
+        std = np.std(pink) + 1e-8
+        return (pink / std * (1.0 / np.sqrt(5))).astype(np.float32)
